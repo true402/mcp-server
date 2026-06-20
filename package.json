@@ -1,6 +1,6 @@
 {
   "name": "@true402.dev/mcp-server",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "mcpName": "dev.true402/mcp-server",
   "description": "MCP server for the true402 machine-native marketplace — pay-per-call AI + web + Base on-chain tools over x402 (USDC on Base): LLM inference, SEO/GEO audit, web extract, link preview, robots/AI-crawler check, security headers, and on-chain DeFi trading signals (token rug/honeypot safety, new token pairs, liquidity-pull/rug alerts, whale swaps).",
   "type": "module",
