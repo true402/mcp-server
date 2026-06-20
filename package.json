@@ -1,0 +1,68 @@
+{
+  "name": "@true402.dev/mcp-server",
+  "version": "0.7.0",
+  "mcpName": "dev.true402/mcp-server",
+  "description": "MCP server for the true402 machine-native marketplace — pay-per-call AI + web + Base on-chain tools over x402 (USDC on Base): LLM inference, SEO/GEO audit, web extract, link preview, robots/AI-crawler check, security headers, and on-chain DeFi trading signals (token rug/honeypot safety, new token pairs, liquidity-pull/rug alerts, whale swaps).",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "true402-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "x402",
+    "ai-agent",
+    "agent",
+    "micropayments",
+    "usdc",
+    "base",
+    "llm",
+    "seo",
+    "geo",
+    "web-scraping",
+    "tools",
+    "defi",
+    "trading",
+    "onchain",
+    "rug-check",
+    "honeypot"
+  ],
+  "homepage": "https://true402.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/true402/mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/true402/mcp-server/issues"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "viem": "^2.21.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

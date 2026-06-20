@@ -1,0 +1,42 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "dev.true402/mcp-server",
+  "description": "Pay-per-call AI + web + on-chain tools over x402 (USDC on Base): LLM, SEO, extract, token safety.",
+  "version": "0.7.0",
+  "websiteUrl": "https://true402.dev",
+  "repository": {
+    "url": "https://github.com/true402/mcp-server",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@true402.dev/mcp-server",
+      "version": "0.7.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "WALLET_PRIVATE_KEY",
+          "description": "Funded Base wallet private key for x402 payment signing (optional; without it, paid tools return the 402 requirements).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "SERVER_URL",
+          "description": "true402 API base (default https://true402.dev/api). Must be https (or localhost) — the signer refuses to send a payment over cleartext.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "MAX_PAYMENT_USDC",
+          "description": "Client-side per-call spend ceiling in USDC (default 0.10). The signer refuses to auto-pay a 402 whose amount exceeds this — protects the wallet from a hostile endpoint.",
+          "isRequired": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

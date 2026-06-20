@@ -1,0 +1,30 @@
+# Smithery registry manifest — https://smithery.ai
+# Runs the published npm package over stdio. Verify against current Smithery docs
+# before submitting (the format evolves).
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      walletPrivateKey:
+        type: string
+        title: Wallet private key
+        description: >-
+          A funded Base wallet private key used to auto-sign x402 payments (USDC
+          on Base). Optional — without it, paid tools return the 402 payment
+          requirements instead of paying. Use a dedicated low-balance wallet.
+      serverUrl:
+        type: string
+        title: Server URL
+        default: https://true402.dev/api
+        description: true402 API base. Override to point at a self-hosted instance.
+    required: []
+  commandFunction: |
+    (config) => ({
+      command: 'npx',
+      args: ['-y', '@true402.dev/mcp-server'],
+      env: {
+        ...(config.walletPrivateKey ? { WALLET_PRIVATE_KEY: config.walletPrivateKey } : {}),
+        SERVER_URL: config.serverUrl || 'https://true402.dev/api'
+      }
+    })

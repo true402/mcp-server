@@ -1,0 +1,22 @@
+{
+  "name": "true402-token-safety-example",
+  "version": "0.1.0",
+  "description": "Reference agent: rug/honeypot-check a Base ERC-20 for $0.005/call over x402. No API key.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "check": "node check-token-safety.mjs"
+  },
+  "dependencies": {
+    "viem": "^2.51.3"
+  },
+  "peerDependencies": {
+    "@langchain/core": ">=0.3",
+    "zod": "^3"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/core": { "optional": true },
+    "zod": { "optional": true }
+  },
+  "keywords": ["x402", "ai-agents", "base", "token-safety", "honeypot", "rug-check", "langchain"]
+}
