@@ -1,0 +1,40 @@
+{
+  "manifest_version": "0.2",
+  "name": "true402",
+  "display_name": "true402",
+  "version": "0.7.1",
+  "description": "Pay-per-call AI + web + on-chain tools for agents over x402 (USDC on Base). No accounts, no API keys — the wallet is the identity. 12 tools incl. token rug/honeypot safety.",
+  "author": { "name": "true402" },
+  "homepage": "https://true402.dev",
+  "documentation": "https://github.com/true402/mcp-server",
+  "license": "MIT",
+  "keywords": ["x402", "ai-agents", "base", "usdc", "micropayments", "defi", "token-safety"],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "npx",
+      "args": ["-y", "@true402.dev/mcp-server"],
+      "env": {
+        "WALLET_PRIVATE_KEY": "${user_config.wallet_private_key}",
+        "SERVER_URL": "${user_config.server_url}"
+      }
+    }
+  },
+  "user_config": {
+    "wallet_private_key": {
+      "type": "string",
+      "title": "Wallet private key",
+      "description": "A funded Base wallet private key to auto-sign x402 payments (USDC on Base). Optional — without it, paid tools return the 402 payment requirements. Use a dedicated low-balance wallet.",
+      "sensitive": true,
+      "required": false
+    },
+    "server_url": {
+      "type": "string",
+      "title": "Server URL",
+      "description": "true402 API base. Override to point at a self-hosted instance.",
+      "default": "https://true402.dev/api",
+      "required": false
+    }
+  }
+}
