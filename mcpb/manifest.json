@@ -3,18 +3,31 @@
   "name": "true402",
   "display_name": "true402",
   "version": "0.7.1",
-  "description": "Pay-per-call AI + web + on-chain tools for agents over x402 (USDC on Base). No accounts, no API keys — the wallet is the identity. 12 tools incl. token rug/honeypot safety.",
-  "author": { "name": "true402" },
+  "description": "Pay-per-call AI + web + on-chain tools for agents over x402 (USDC on Base). No accounts, no API keys \u2014 the wallet is the identity. 12 tools incl. token rug/honeypot safety.",
+  "author": {
+    "name": "true402"
+  },
   "homepage": "https://true402.dev",
   "documentation": "https://github.com/true402/mcp-server",
   "license": "MIT",
-  "keywords": ["x402", "ai-agents", "base", "usdc", "micropayments", "defi", "token-safety"],
+  "keywords": [
+    "x402",
+    "ai-agents",
+    "base",
+    "usdc",
+    "micropayments",
+    "defi",
+    "token-safety"
+  ],
   "server": {
     "type": "node",
     "entry_point": "dist/index.js",
     "mcp_config": {
       "command": "npx",
-      "args": ["-y", "@true402.dev/mcp-server"],
+      "args": [
+        "-y",
+        "@true402.dev/mcp-server"
+      ],
       "env": {
         "WALLET_PRIVATE_KEY": "${user_config.wallet_private_key}",
         "SERVER_URL": "${user_config.server_url}"
@@ -25,7 +38,7 @@
     "wallet_private_key": {
       "type": "string",
       "title": "Wallet private key",
-      "description": "A funded Base wallet private key to auto-sign x402 payments (USDC on Base). Optional — without it, paid tools return the 402 payment requirements. Use a dedicated low-balance wallet.",
+      "description": "A funded Base wallet private key to auto-sign x402 payments (USDC on Base). Optional \u2014 without it, paid tools return the 402 payment requirements. Use a dedicated low-balance wallet.",
       "sensitive": true,
       "required": false
     },
@@ -36,5 +49,59 @@
       "default": "https://true402.dev/api",
       "required": false
     }
-  }
+  },
+  "tools": [
+    {
+      "name": "list_models",
+      "description": "List available models + pricing (free)"
+    },
+    {
+      "name": "chat",
+      "description": "OpenAI-compatible LLM inference across many models (pay-per-token)"
+    },
+    {
+      "name": "token_safety",
+      "description": "ERC-20 rug/honeypot pre-check on Base \u2014 score, risk band, flags, liquidity, buy/sell sim"
+    },
+    {
+      "name": "address_safety",
+      "description": "Structural safety profile for any Base address (EOA/contract): balances, activity, EIP-1967 proxy"
+    },
+    {
+      "name": "token_report",
+      "description": "Composite ape-in verdict for a Base ERC-20 (safety + rug/whale activity)"
+    },
+    {
+      "name": "new_pairs",
+      "description": "Newly created Base DEX pairs (Uniswap V3 / Aerodrome) \u2014 fresh launches"
+    },
+    {
+      "name": "liquidity_pulls",
+      "description": "Liquidity-removal / rug alerts on Base pools"
+    },
+    {
+      "name": "whale_swaps",
+      "description": "Large Base swaps by USD size \u2014 whale flow"
+    },
+    {
+      "name": "seo_audit",
+      "description": "SEO + GEO audit of any URL \u2192 structured report"
+    },
+    {
+      "name": "web_extract",
+      "description": "Fetch any URL \u2192 clean text + markdown + links + metadata"
+    },
+    {
+      "name": "link_preview",
+      "description": "Open Graph / unfurl card for any URL"
+    },
+    {
+      "name": "robots_check",
+      "description": "A site's AI-crawler policy + sitemaps + llms.txt"
+    },
+    {
+      "name": "headers_check",
+      "description": "HTTP security-headers analysis + a 0-100 score"
+    }
+  ]
 }
