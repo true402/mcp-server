@@ -55,6 +55,31 @@ Add to your MCP config (`claude_desktop_config.json`, or `.mcp.json` for Claude 
 
 Same idea — command `npx`, args `["-y", "@true402.dev/mcp-server"]`, and the `WALLET_PRIVATE_KEY` env var.
 
+### Hermes (NousResearch hermes-agent)
+
+Hermes consumes MCP servers directly. Add to `~/.hermes/config.yaml`:
+
+```yaml
+mcp_servers:
+  true402:
+    command: npx
+    args: ["-y", "@true402.dev/mcp-server"]
+    env:
+      WALLET_PRIVATE_KEY: "0xYOUR_FUNDED_BASE_WALLET_KEY"
+```
+
+Every stall becomes a tool named `mcp_true402_<tool>` (e.g. `mcp_true402_token_safety`).
+
+### OpenClaw
+
+Two options. The zero-config route is the keyless CLI — ask your agent to `npx -y @true402.dev/rugcheck 0x<token>` (free daily trial, no wallet). Or install the dedicated skill from ClawHub:
+
+```bash
+openclaw skills install true402-token-safety
+```
+
+(source: [github.com/true402/openclaw-skill-true402](https://github.com/true402/openclaw-skill-true402))
+
 ## Configuration
 
 | Env var | Default | Description |
