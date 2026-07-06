@@ -11,7 +11,7 @@ No accounts, no API keys. The agent's **wallet is its identity**: each paid tool
 | `chat` | per-token + 3% | OpenAI-compatible LLM inference across many models |
 | `list_models` | free | List available models + pricing |
 | `token_safety` | $0.005 | ERC-20 rug/honeypot pre-check on Base → 0–100 score, risk band, flags, liquidity depth + a buy/sell honeypot simulation |
-| `seo_audit` | $0.015 | SEO + GEO (generative-engine-optimization) audit of a page → structured report |
+| `seo_audit` | $0.04/page | SEO + GEO (generative-engine-optimization) audit of a page → structured report |
 | `web_extract` | $0.005 | Fetch a URL → clean text + markdown + links + metadata |
 | `link_preview` | $0.003 | Fetch a URL → Open Graph / unfurl card |
 | `robots_check` | $0.003 | A site's AI-crawler policy (GPTBot, ClaudeBot, Google-Extended, PerplexityBot, …) + sitemaps + llms.txt |
@@ -54,31 +54,6 @@ Add to your MCP config (`claude_desktop_config.json`, or `.mcp.json` for Claude 
 ### Cursor / Cline / other MCP clients
 
 Same idea — command `npx`, args `["-y", "@true402.dev/mcp-server"]`, and the `WALLET_PRIVATE_KEY` env var.
-
-### Hermes (NousResearch hermes-agent)
-
-Hermes consumes MCP servers directly. Add to `~/.hermes/config.yaml`:
-
-```yaml
-mcp_servers:
-  true402:
-    command: npx
-    args: ["-y", "@true402.dev/mcp-server"]
-    env:
-      WALLET_PRIVATE_KEY: "0xYOUR_FUNDED_BASE_WALLET_KEY"
-```
-
-Every stall becomes a tool named `mcp_true402_<tool>` (e.g. `mcp_true402_token_safety`).
-
-### OpenClaw
-
-Two options. The zero-config route is the keyless CLI — ask your agent to `npx -y @true402.dev/rugcheck 0x<token>` (free daily trial, no wallet). Or install the dedicated skill from ClawHub:
-
-```bash
-openclaw skills install true402-token-safety
-```
-
-(source: [github.com/true402/openclaw-skill-true402](https://github.com/true402/openclaw-skill-true402))
 
 ## Configuration
 
