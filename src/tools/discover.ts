@@ -26,7 +26,7 @@ interface JsonSchema {
 }
 
 /** Map one JSON-Schema property to a zod validator (covers the property kinds the stalls use). */
-function toZod(prop: JsonSchema): z.ZodTypeAny {
+export function toZod(prop: JsonSchema): z.ZodTypeAny {
   let base: z.ZodTypeAny;
   if (Array.isArray(prop.enum) && prop.enum.length > 0) {
     base = z.enum(prop.enum.map(String) as [string, ...string[]]);
@@ -34,6 +34,12 @@ function toZod(prop: JsonSchema): z.ZodTypeAny {
     base = z.number();
   } else if (prop.type === "boolean") {
     base = z.boolean();
+  } else if (prop.type === "object") {
+    // Nested-object params (e.g. quant's `params`) must pass through as objects — coercing them to
+    // string made every such tool call fail validation.
+    base = z.record(z.unknown());
+  } else if (prop.type === "array") {
+    base = z.array(z.unknown());
   } else {
     base = z.string();
   }
@@ -41,7 +47,7 @@ function toZod(prop: JsonSchema): z.ZodTypeAny {
 }
 
 /** Build a zod raw shape from a request-body JSON Schema's `properties` + `required`. */
-function bodyToShape(schema: JsonSchema | undefined): ZodRawShapeCompat {
+export function bodyToShape(schema: JsonSchema | undefined): ZodRawShapeCompat {
   const shape: Record<string, z.ZodTypeAny> = {};
   const required = new Set(schema?.required ?? []);
   for (const [key, prop] of Object.entries(schema?.properties ?? {})) {

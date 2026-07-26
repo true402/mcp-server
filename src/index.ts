@@ -14,6 +14,7 @@
  *                         without it, paid tools surface the 402 requirements instead)
  */
 
+import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerModelsTool } from "./tools/models.js";
@@ -24,9 +25,15 @@ import { registerDiscoveredStalls } from "./tools/discover.js";
 const SERVER_URL = process.env.SERVER_URL ?? "https://true402.dev/api";
 const WALLET_PRIVATE_KEY = process.env.WALLET_PRIVATE_KEY;
 
+// serverInfo.version reads package.json so it can never drift from the published version again
+// (1.0.0–1.0.2 shipped reporting a stale hardcoded "0.7.0").
+const { version: PKG_VERSION } = createRequire(import.meta.url)("../package.json") as {
+  version: string;
+};
+
 const server = new McpServer({
   name: "true402",
-  version: "0.7.0",
+  version: PKG_VERSION,
 });
 
 // Start server with stdio transport

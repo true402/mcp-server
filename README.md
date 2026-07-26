@@ -75,6 +75,7 @@ Same idea — command `npx`, args `["-y", "@true402.dev/mcp-server"]`, and the `
 ## Links
 
 - Marketplace: <https://true402.dev>
+- Free Telegram rug-check bot (no wallet): <https://t.me/True402bot>
 - Live tool catalog: <https://true402.dev/api/v1/services>
 - x402 protocol: <https://x402.org>
 
