@@ -79,6 +79,13 @@ Same idea — command `npx`, args `["-y", "@true402.dev/mcp-server"]`, and the `
 - Live tool catalog: <https://true402.dev/api/v1/services>
 - x402 protocol: <https://x402.org>
 
+## Also available for
+
+MCP (Claude Code / Desktop, Cursor, **Hermes**) · **Hermes Agent** · **OpenClaw** · **ElizaOS** ·
+**LangChain** · **CrewAI** · **Vercel AI SDK** · **Coinbase AgentKit** · **Virtuals GAME** · CLI —
+same on-chain checks, one install command each:
+**[true402.dev/integrations](https://true402.dev/integrations)**
+
 ## License
 
 MIT
