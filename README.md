@@ -20,6 +20,8 @@ No accounts, no API keys. The agent's **wallet is its identity**: each paid tool
 | `liquidity_pulls` | $0.003 | Liquidity-removal / rug alerts on Base pools |
 | `whale_swaps` | $0.005 | Large swaps on Base by USD size — whale flow |
 | `token_report` | $0.01 | Fuller on-chain token report |
+| `liquidity_history` | $0.005 | What ALREADY happened to a Base token's liquidity — every removal with amount/block/tx, plus the other tokens drained in the same transaction. History a live simulation cannot re-derive |
+| `tx_preflight` | $0.008 | Check an **unsigned** Base transaction before signing: does it revert, does it grant an unlimited approval, and has the counterparty been seen draining liquidity. Takes no key and no signature, so it cannot broadcast or front-run |
 
 Tools are **auto-discovered** from the live catalog, so new marketplace stalls appear automatically.
 Prices are illustrative; the live 402 challenge is authoritative.
