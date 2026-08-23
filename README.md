@@ -63,6 +63,7 @@ Same idea — command `npx`, args `["-y", "@true402.dev/mcp-server"]`, and the `
 |---------|---------|-------------|
 | `SERVER_URL` | `https://true402.dev/api` | true402 API base. Override to point at a self-hosted instance. |
 | `WALLET_PRIVATE_KEY` | _(none)_ | A funded **Base** wallet private key used to sign x402 payments. Needs **USDC** (gas is sponsored by the facilitator — no ETH required). Without it, paid tools return the 402 requirements instead of paying. |
+| `MAX_PAYMENT_USDC` | `0.25` | Hard per-call spend ceiling in USDC. This server **auto-discovers every paid stall** the marketplace advertises (it walks the live OpenAPI spec, not a fixed list), so a new or repriced stall can appear above the default at any time — a call over the ceiling is refused (not paid, not crashed), and the refusal names the price and the ceiling. Raise it if a discovered tool's description shows a price close to or over your configured value; one stall (`seo_audit`) is priced **per page** and can itself exceed a typical ceiling on a large page. |
 
 > **Security:** the key is read only from the environment and is never logged, echoed, or returned. Use a dedicated low-balance wallet — fund it with only what you intend to spend.
 
