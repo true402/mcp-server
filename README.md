@@ -72,7 +72,7 @@ Same idea — command `npx`, args `["-y", "@true402.dev/mcp-server"]`, and the `
 1. The tool calls the true402 endpoint with no payment.
 2. The server replies `402` with accepted payment options (USDC on Base).
 3. This MCP server signs an EIP-3009 `transferWithAuthorization` with your wallet.
-4. It retries with the signed `X-PAYMENT` header; the service verifies and responds.
+4. It retries with the signed payment in the `PAYMENT-SIGNATURE` header (x402 v2); the service verifies and responds.
 5. Settlement happens on-chain. Your wallet pays only USDC — the facilitator sponsors gas.
 
 ## Links
