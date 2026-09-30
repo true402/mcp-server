@@ -75,6 +75,9 @@ Same idea — command `npx`, args `["-y", "@true402.dev/mcp-server"]`, and the `
 4. It retries with the signed payment in the `PAYMENT-SIGNATURE` header (x402 v2); the service verifies and responds.
 5. Settlement happens on-chain. Your wallet pays only USDC — the facilitator sponsors gas.
 
+When a newer release of this server exists, the first tool result of the session carries one extra
+line saying so, with the install command. Nothing is blocked; it is shown once per process.
+
 ## Links
 
 - Marketplace: <https://true402.dev>
