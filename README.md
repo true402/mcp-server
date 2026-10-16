@@ -19,7 +19,7 @@ No accounts, no API keys. The agent's **wallet is its identity**: each paid tool
 | `new_pairs` | $0.003 | Newly created Base DEX pairs (Uniswap V3 / Aerodrome) — fresh token launches |
 | `liquidity_pulls` | $0.003 | Liquidity-removal / rug alerts on Base pools |
 | `whale_swaps` | $0.005 | Large swaps on Base by USD size — whale flow |
-| `token_report` | $0.01 | Fuller on-chain token report |
+| `token_report` | $0.008 | Fuller on-chain token report |
 | `liquidity_history` | $0.005 | What ALREADY happened to a Base token's liquidity — every removal with amount/block/tx, plus the other tokens drained in the same transaction. History a live simulation cannot re-derive |
 | `tx_preflight` | $0.008 | Check an **unsigned** Base transaction before signing: does it revert, does it grant an unlimited approval, and has the counterparty been seen draining liquidity. Takes no key and no signature, so it cannot broadcast or front-run |
 
@@ -64,6 +64,7 @@ Same idea — command `npx`, args `["-y", "@true402.dev/mcp-server"]`, and the `
 | `SERVER_URL` | `https://true402.dev/api` | true402 API base. Override to point at a self-hosted instance. |
 | `WALLET_PRIVATE_KEY` | _(none)_ | A funded **Base** wallet private key used to sign x402 payments. Needs **USDC** (gas is sponsored by the facilitator — no ETH required). Without it, paid tools return the 402 requirements instead of paying. |
 | `MAX_PAYMENT_USDC` | `0.25` | Hard per-call spend ceiling in USDC. This server **auto-discovers every paid stall** the marketplace advertises (it walks the live OpenAPI spec, not a fixed list), so a new or repriced stall can appear above the default at any time — a call over the ceiling is refused (not paid, not crashed), and the refusal names the price and the ceiling. Raise it if a discovered tool's description shows a price close to or over your configured value; one stall (`seo_audit`) is priced **per page** and can itself exceed a typical ceiling on a large page. |
+| `X402_ALLOW_NETWORKS` | _(none)_ | Payments are signed for **Base mainnet (`eip155:8453`) only**; a 402 naming any other chain is refused. To also pay on Base Sepolia or Ethereum mainnet, list them as comma-separated CAIP-2 ids, e.g. `eip155:84532,eip155:1`. Unsupported entries are ignored. |
 
 > **Security:** the key is read only from the environment and is never logged, echoed, or returned. Use a dedicated low-balance wallet — fund it with only what you intend to spend.
 
