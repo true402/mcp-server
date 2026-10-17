@@ -11,7 +11,7 @@ No accounts, no API keys. The agent's **wallet is its identity**: each paid tool
 | `chat` | per-token + 3% | OpenAI-compatible LLM inference across many models |
 | `list_models` | free | List available models + pricing |
 | `token_safety` | $0.005 | ERC-20 rug/honeypot pre-check on Base → 0–100 score, risk band, flags, liquidity depth + a buy/sell honeypot simulation |
-| `seo_audit` | $0.04/page | SEO + GEO (generative-engine-optimization) audit of a page → structured report |
+| `seo_audit` | $0.02/page | SEO + GEO (generative-engine-optimization) audit of a page → structured report |
 | `web_extract` | $0.005 | Fetch a URL → clean text + markdown + links + metadata |
 | `link_preview` | $0.003 | Fetch a URL → Open Graph / unfurl card |
 | `robots_check` | $0.003 | A site's AI-crawler policy (GPTBot, ClaudeBot, Google-Extended, PerplexityBot, …) + sitemaps + llms.txt |
