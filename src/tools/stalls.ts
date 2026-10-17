@@ -57,9 +57,14 @@ export function registerStall<Schema extends ZodRawShapeCompat>(
       walletPrivateKey
     );
 
+    // A newer release exists: shown once per process, as its own block so it never mixes with data.
+    const notice = result.updateNotice
+      ? [{ type: "text" as const, text: result.updateNotice }]
+      : [];
+
     if (!result.ok) {
       return {
-        content: [{ type: "text" as const, text: result.message }],
+        content: [{ type: "text" as const, text: result.message }, ...notice],
         isError: true,
       };
     }
@@ -70,6 +75,7 @@ export function registerStall<Schema extends ZodRawShapeCompat>(
           type: "text" as const,
           text: JSON.stringify(result.data, null, 2),
         },
+        ...notice,
       ],
     };
   };
@@ -98,15 +104,18 @@ const urlField = z
   .describe("Absolute http(s) URL of the page to process");
 
 /**
- * Register all nine non-LLM paid stalls on the given MCP server: the web utilities
- * (seo_audit, web_extract, link_preview, robots_check, headers_check) and the Base
- * on-chain trading signals (token_safety, new_pairs, liquidity_pulls, whale_swaps).
+ * FALLBACK stall list, used only when the server is unreachable at startup and OpenAPI discovery
+ * cannot run (see tools/discover.ts). The live path registers every paid stall automatically, so
+ * this list is deliberately a subset — the capabilities worth having present even in a degraded
+ * start: the web utilities (seo_audit, web_extract, link_preview, robots_check, headers_check) and
+ * the Base on-chain signals (token_safety, new_pairs, liquidity_pulls, whale_swaps,
+ * liquidity_history, tx_preflight).
  */
 export function registerStallTools(
   server: McpServer,
   baseUrl: string,
   walletPrivateKey: string | undefined
-) {
+): string[] {
   // 1. SEO + GEO audit.
   registerStall(
     server,
@@ -299,4 +308,63 @@ export function registerStallTools(
       return body;
     },
   });
+
+  // 10. Liquidity history — the durable archive rather than the live feed. Answers what ALREADY
+  // happened to a token's liquidity, which a live simulation cannot re-derive.
+  registerStall(server, baseUrl, walletPrivateKey, {
+    toolName: "liquidity_history",
+    path: "/v1/base/liquidity-history",
+    description:
+      "Observed liquidity history for one Base token, from true402's own DEX archive. Returns every " +
+      "pool indexed for it, every liquidity-removal event with the amount removed, block and " +
+      "transaction hash, and the OTHER tokens drained in the same transaction (one actor, several " +
+      "pools). Unlike a live honeypot simulation this answers what already happened — a pool drained " +
+      "last month simulates fine today if it was re-seeded. Every answer carries the exact block " +
+      "range the removal index covers, so 'none observed' is never a claim of safety. PAID x402 " +
+      "service (USDC on Base) — needs a funded wallet on the MCP server.",
+    inputSchema: {
+      token: z.string().describe("Base token contract address (0x…)"),
+      limit: z.number().int().min(1).max(200).optional().describe("Max removal events to return (1–200, default 50)"),
+    },
+    buildBody: ({ token, limit }) => {
+      const body: Record<string, unknown> = { token };
+      if (limit !== undefined) body.limit = limit;
+      return body;
+    },
+  });
+
+  // 11. Transaction preflight — the last check before signing. Takes NO key and NO signature.
+  registerStall(server, baseUrl, walletPrivateKey, {
+    toolName: "tx_preflight",
+    path: "/v1/base/tx-preflight",
+    description:
+      "Check a Base transaction BEFORE signing it. Send an UNSIGNED transaction and get three " +
+      "independent lenses: a simulation against current state (does it revert?), the decoded intent " +
+      "(is this an unlimited approval that outlives the trade?), and the counterparty's " +
+      "liquidity-removal history from true402's archive. Takes NO private key and NO signature, so " +
+      "the service cannot broadcast or front-run the transaction it inspects. Never returns 'safe': " +
+      "a clean result means these checks found nothing, and every response states its limits. PAID " +
+      "x402 service (USDC on Base) — needs a funded wallet on the MCP server.",
+    inputSchema: {
+      from: z.string().describe("Sender address. Asserted, never proven — no signature is taken."),
+      to: z.string().describe("Destination contract or address"),
+      data: z.string().optional().describe("Calldata hex (0x…); omit for a plain native transfer"),
+      value: z.string().optional().describe("Native value in wei as a decimal string; default 0"),
+    },
+    buildBody: ({ from, to, data, value }) => {
+      const body: Record<string, unknown> = { from, to };
+      if (data !== undefined) body.data = data;
+      if (value !== undefined) body.value = value;
+      return body;
+    },
+  });
+
+  // Reported by index.ts so a degraded start says WHICH tools it has, exactly as the live path does.
+  // Otherwise the only difference a user sees between full discovery and the fallback is a subset of
+  // tools appearing with no explanation.
+  return [
+    "seo_audit", "web_extract", "link_preview", "robots_check", "headers_check",
+    "token_safety", "new_pairs", "liquidity_pulls", "whale_swaps",
+    "liquidity_history", "tx_preflight",
+  ];
 }

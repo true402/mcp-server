@@ -6,18 +6,19 @@
  *   2. If the server replies 402, parse the payment requirements
  *   3. Pick the EVM (scheme: "exact") option, sign an EIP-3009
  *      TransferWithAuthorization with the configured wallet
- *   4. Retry with the base64-encoded `X-PAYMENT` header
+ *   4. Retry with the base64-encoded `PAYMENT-SIGNATURE` header (x402 v2)
  *   5. Return the parsed JSON (or a structured error)
  *
  * The signer is network-aware: it derives the EIP-712 domain (chainId,
- * verifyingContract, name, version) from the 402 requirement itself, so it
- * works on Base mainnet, Base Sepolia, or any future network the server
- * advertises — instead of being hardcoded to one chain.
+ * verifyingContract, name, version) from the 402 requirement itself. Which
+ * networks it will sign for at ALL is pinned: Base mainnet only, unless the
+ * operator lists more in X402_ALLOW_NETWORKS (see {@link allowedChainIds}).
  *
  * SECURITY: the wallet private key is never logged, echoed, or returned.
  */
 
 import { type Hex, type Address, encodePacked, keccak256 } from "viem";
+import { USER_AGENT, takeUpdateNotice } from "./client.js";
 import { privateKeyToAccount } from "viem/accounts";
 
 /**
@@ -103,28 +104,113 @@ const USDC_BY_CHAIN: Record<number, string> = {
   1: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // Ethereum mainnet
 };
 
+/** The only network signed for by default: Base mainnet, where true402 settles. */
+const DEFAULT_ALLOWED_CHAIN_ID = 8453;
+
+/**
+ * The chains this server will sign a payment for.
+ *
+ * A 402 is written by the server being paid, and SERVER_URL can point anywhere. Signing for whatever
+ * chain the 402 names meant a hostile or misconfigured seller could collect a valid USDC authorization
+ * on Ethereum mainnet (or a testnet) from a wallet the operator funded for Base. So: Base mainnet
+ * only, unless the operator opts in explicitly —
+ *
+ *   X402_ALLOW_NETWORKS=eip155:84532,eip155:1   (CAIP-2 ids, comma-separated, ADDED to Base)
+ *
+ * Only chains with a pinned USDC in USDC_BY_CHAIN can be added; anything else is ignored with a warning.
+ */
+export function allowedChainIds(raw: string | undefined = process.env.X402_ALLOW_NETWORKS): Set<number> {
+  const allowed = new Set<number>([DEFAULT_ALLOWED_CHAIN_ID]);
+  for (const entry of (raw ?? "").split(",").map((x) => x.trim()).filter(Boolean)) {
+    const m = /^eip155:(\d+)$/.exec(entry);
+    const id = m ? Number(m[1]) : NaN;
+    if (USDC_BY_CHAIN[id] !== undefined) allowed.add(id);
+    else console.error(`true402 MCP: X402_ALLOW_NETWORKS entry '${entry}' is not a supported CAIP-2 network — ignored.`);
+  }
+  return allowed;
+}
+
+/**
+ * Pick the payment requirement this client can actually settle.
+ *
+ * true402 quotes MORE THAN ONE rail and both carry `scheme: "exact"` — EVM and Solana. Selecting on
+ * scheme alone returns whatever the server listed first, which works only because the server
+ * deliberately keeps EVM at `accepts[0]`. That invariant is maintained in a different codebase from
+ * this published client, and a client already installed in the field cannot be hot-fixed if it ever
+ * moves — so match on what we can PAY.
+ *
+ * "Can pay" means a chain with a pinned USDC that is also ALLOWED (Base mainnet, plus whatever
+ * X402_ALLOW_NETWORKS adds) — the same rule `assessRequirement` validates against. Amount and asset
+ * are still checked afterwards — this only decides WHICH entry gets checked.
+ */
+export function selectPayableRequirement(
+  accepts: Array<Record<string, unknown>> | undefined,
+  allowed: Set<number> = allowedChainIds(),
+): EVMPaymentRequirement | undefined {
+  return (accepts ?? []).find((r) => {
+    if (r.scheme !== "exact") return false;
+    const chainId = strictChainId(typeof r.network === "string" ? r.network : "");
+    return chainId !== undefined && USDC_BY_CHAIN[chainId] !== undefined && allowed.has(chainId);
+  }) as EVMPaymentRequirement | undefined;
+}
+
+/**
+ * Like {@link resolveChainId} but returns undefined instead of guessing.
+ *
+ * `resolveChainId` falls back to DEFAULT_CHAIN_ID (Base) for ANY unrecognised network string, so it
+ * reports "solana" as chain 8453. That is harmless where it is used — `assessRequirement` then
+ * compares the asset and refuses, because Solana's base58 USDC is not Base's hex address — but it
+ * is useless for CHOOSING a rail: every entry would look payable. Selection needs a resolver that
+ * can say "I do not know this network", so an unknown rail is skipped rather than picked and then
+ * refused downstream.
+ */
+function strictChainId(network: string): number | undefined {
+  if (CHAIN_IDS[network] !== undefined) return CHAIN_IDS[network];
+  const caip = /^eip155:(\d+)$/.exec(network);
+  if (caip) return Number(caip[1]);
+  switch (network) {
+    case "base":
+    case "base-mainnet":
+      return 8453;
+    case "base-sepolia":
+      return 84532;
+    case "ethereum":
+    case "mainnet":
+      return 1;
+    default:
+      return undefined;
+  }
+}
+
 /**
  * Guard a 402 requirement BEFORE signing: a hostile/buggy server must not make the wallet sign a
  * draining amount or an off-spec asset. Returns a refusal string, or null if the payment is allowed.
  * - amount must be ≤ `maxUsdc` (the client-side spend ceiling, MAX_PAYMENT_USDC).
- * - asset must be the canonical USDC on a supported chain (no arbitrary token/verifyingContract).
+ * - asset must be the canonical USDC on an ALLOWED chain (no arbitrary token/verifyingContract).
  */
-export function assessRequirement(req: EVMPaymentRequirement, maxUsdc: number): string | null {
+export function assessRequirement(
+  req: EVMPaymentRequirement,
+  maxUsdc: number,
+  allowed: Set<number> = allowedChainIds(),
+): string | null {
   const raw = req.amount ?? req.maxAmountRequired;
   if (raw === undefined) return "the 402 has no amount; refusing to sign.";
-  let amountUsdc: number;
-  try {
-    amountUsdc = Number(BigInt(raw)) / 1e6; // USDC has 6 decimals
-  } catch {
-    return "the 402 amount is unparseable; refusing to sign.";
-  }
-  if (!Number.isFinite(amountUsdc) || amountUsdc < 0) return "the 402 amount is invalid; refusing to sign.";
+  // Digits only, and positive: `BigInt` would also take "0x10", " 12 " or "" (= 0n), and "-5".
+  if (!/^\d+$/.test(String(raw))) return "the 402 amount is unparseable; refusing to sign.";
+  if (BigInt(raw) <= 0n) return "the 402 amount is not positive; refusing to sign.";
+  const amountUsdc = Number(BigInt(raw)) / 1e6; // USDC has 6 decimals
+  if (!Number.isFinite(amountUsdc)) return "the 402 amount is invalid; refusing to sign.";
   // `maxUsdc` is a finite, non-negative invariant (see parseMaxUsdc) — the comparison ALWAYS runs, so
   // a misconfigured ceiling can never silently disable the cap (maxUsdc=0 refuses everything).
   if (amountUsdc > maxUsdc) {
     return `refusing to auto-pay $${amountUsdc} USDC — it exceeds the MAX_PAYMENT_USDC ceiling of $${maxUsdc}. Raise MAX_PAYMENT_USDC if this is intended.`;
   }
-  const usdc = USDC_BY_CHAIN[resolveChainId(req.network)];
+  // The STRICT resolver: the lenient one maps any unknown network to Base and would let it through.
+  const chainId = strictChainId(typeof req.network === "string" ? req.network : "");
+  if (chainId === undefined || !allowed.has(chainId)) {
+    return `refusing to pay: the 402's network "${String(req.network)}" is not allowed (Base mainnet only; add others with X402_ALLOW_NETWORKS).`;
+  }
+  const usdc = USDC_BY_CHAIN[chainId];
   if (!usdc || (req.asset ?? "").toLowerCase() !== usdc.toLowerCase()) {
     return "refusing to pay: the 402's asset/network is not canonical USDC on a supported Base network.";
   }
@@ -132,21 +218,39 @@ export function assessRequirement(req: EVMPaymentRequirement, maxUsdc: number): 
 }
 
 /**
- * Parse the MAX_PAYMENT_USDC ceiling FAIL-CLOSED: unset → the 0.10 default; a non-numeric or negative
- * value (e.g. the European comma-decimal "0,10" → NaN) clamps to 0 = refuse ALL auto-pay, never
- * disables the only wallet-drain guard.
+ * Default MAX_PAYMENT_USDC ceiling when the env var is unset.
+ *
+ * This server AUTO-DISCOVERS every paid stall the marketplace advertises (`tools/discover.ts` walks
+ * the live `/openapi.json`), so the ceiling has to clear the whole live catalog, not just the
+ * hand-picked fallback list. The previous default (0.10) was silently BELOW the catalog's own top
+ * fixed price (`keyword-volume`, $0.15) — measured live 2026-08-15 — so a caller running with
+ * defaults could never complete that call: `assessRequirement()` refused it every time, and the
+ * README never mentioned the var, so the only way to discover the fix was to read the refusal text.
+ * 0.25 matches the cap the sibling `examples/` client packages carry (raised the same day, commit
+ * `7dab12a`) and clears every fixed-price stall with real headroom (min margin $0.10, on
+ * keyword-volume). It does NOT cover the top of `seo-audit`'s own dynamic per-page range (up to
+ * $0.80) — that is inherent to a per-page price scaling with input size, not a stale constant, and
+ * `assessRequirement` still refuses (fails closed, never crashes or overpays) a quote that lands
+ * above whatever ceiling is configured.
+ */
+const DEFAULT_MAX_USDC = 0.25;
+
+/**
+ * Parse the MAX_PAYMENT_USDC ceiling FAIL-CLOSED: unset → the DEFAULT_MAX_USDC default; a
+ * non-numeric or negative value (e.g. the European comma-decimal "0,10" → NaN) clamps to 0 = refuse
+ * ALL auto-pay, never disables the only wallet-drain guard.
  */
 export function parseMaxUsdc(raw: string | undefined): number {
-  if (raw === undefined) return 0.1;
+  if (raw === undefined) return DEFAULT_MAX_USDC;
   const n = Number(raw);
   if (Number.isFinite(n) && n >= 0) return n;
   console.error(
-    `true402 MCP: MAX_PAYMENT_USDC='${raw}' is not a valid number — refusing ALL auto-pay. Set a numeric value like 0.10.`
+    `true402 MCP: MAX_PAYMENT_USDC='${raw}' is not a valid number — refusing ALL auto-pay. Set a numeric value like 0.25.`
   );
   return 0;
 }
 
-/** Refuse to send a signed payment over cleartext (the X-PAYMENT header would be interceptable).
+/** Refuse to send a signed payment over cleartext (the PAYMENT-SIGNATURE header would be interceptable).
  *  Returns a refusal string, or null if the URL is https (or localhost for dev). */
 export function requireSecureUrl(url: string): string | null {
   let u: URL;
@@ -155,12 +259,32 @@ export function requireSecureUrl(url: string): string | null {
   } catch {
     return `invalid SERVER_URL: ${url}`;
   }
-  const local = u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1";
+  // WHATWG URL keeps the brackets on an IPv6 hostname, so loopback is "[::1]", not "::1".
+  const local = u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "[::1]";
   if (u.protocol !== "https:" && !local) {
     return `refusing to send a signed payment over cleartext (${u.protocol}//${u.hostname}); use an https SERVER_URL (or localhost for dev).`;
   }
   return null;
 }
+
+/**
+ * Redirects are never followed. fetch re-sends a 307/308 with the same method, body AND headers —
+ * PAYMENT-SIGNATURE included — to wherever `Location` points, https to http included, so following
+ * one would hand a signed, claimable authorization to a host nobody vetted. Both requests use
+ * `redirect: "manual"`; this turns any 3xx into a refusal string (null = not a redirect).
+ */
+export function redirectRefusal(res: Response, url: string): string | null {
+  if (String(res.type) === "opaqueredirect" || (res.status >= 300 && res.status < 400)) {
+    return `${url} answered HTTP ${res.status}: server redirected; refusing to send a payment elsewhere.`;
+  }
+  return null;
+}
+
+// Request deadlines. Without one a stalled endpoint parks the tool call on undici's ~5-minute default.
+// The PAID leg is far more generous: the server settles on 2xx, so abandoning a merely SLOW paid
+// response would mean the buyer paid and got nothing (token-report legitimately takes tens of seconds).
+const PROBE_TIMEOUT_MS = 30_000;
+const PAID_TIMEOUT_MS = 120_000;
 
 /**
  * Sign an EIP-3009 TransferWithAuthorization and return the x402 payment
@@ -246,8 +370,7 @@ export async function signEIP3009Payment(
   // Build x402 payment payload
   return {
     x402Version: 2,
-    scheme: "exact",
-    network: requirement.network,
+    accepted: requirement,
     payload: {
       signature,
       authorization: {
@@ -270,9 +393,13 @@ export async function signEIP3009Payment(
  *   `paymentRequired` is true when the failure was a 402 we could not satisfy
  *   (so the caller can surface the requirements clearly).
  */
-export type PayAndFetchResult =
+export type PayAndFetchResult = (
   | { ok: true; data: unknown }
-  | { ok: false; message: string; paymentRequired?: boolean };
+  | { ok: false; message: string; paymentRequired?: boolean }
+) & {
+  /** Set once per process when a newer release exists (client.ts); tools append it to their result. */
+  updateNotice?: string;
+};
 
 /**
  * Perform the full x402 flow against `${baseUrl}${path}` with the given JSON
@@ -288,9 +415,24 @@ export async function payAndFetch(
   body: unknown,
   walletPrivateKey: string | undefined
 ): Promise<PayAndFetchResult> {
+  let notice: string | null = null;
+  const note = (res: Response): void => {
+    notice ??= takeUpdateNotice(res, baseUrl);
+  };
+  const result = await payAndFetchInner(baseUrl, path, body, walletPrivateKey, note);
+  return notice ? { ...result, updateNotice: notice } : result;
+}
+
+async function payAndFetchInner(
+  baseUrl: string,
+  path: string,
+  body: unknown,
+  walletPrivateKey: string | undefined,
+  note: (res: Response) => void
+): Promise<PayAndFetchResult> {
   const url = `${baseUrl}${path}`;
 
-  // Step 0: never sign/send a payment over cleartext (X-PAYMENT would be interceptable).
+  // Step 0: never sign/send a payment over cleartext (PAYMENT-SIGNATURE would be interceptable).
   const insecure = requireSecureUrl(url);
   if (insecure) return { ok: false, message: insecure };
 
@@ -299,9 +441,12 @@ export async function payAndFetch(
   try {
     firstResponse = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "User-Agent": USER_AGENT },
       body: JSON.stringify(body),
+      redirect: "manual",
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
+    note(firstResponse);
   } catch (err) {
     return {
       ok: false,
@@ -310,6 +455,9 @@ export async function payAndFetch(
       }`,
     };
   }
+
+  const firstRedirect = redirectRefusal(firstResponse, url);
+  if (firstRedirect) return { ok: false, message: firstRedirect };
 
   // Step 2: non-402 short-circuit (success OR a non-payment error).
   if (firstResponse.status !== 402) {
@@ -345,10 +493,9 @@ export async function payAndFetch(
     };
   }
 
-  // Find the EVM payment option (scheme: "exact").
-  const evmRequirement = paymentData.accepts?.find(
-    (r) => r.scheme === "exact"
-  ) as EVMPaymentRequirement | undefined;
+  // Find a payment option we can actually settle — NOT merely the first `scheme: "exact"` entry,
+  // which is also what the Solana rail carries.
+  const evmRequirement = selectPayableRequirement(paymentData.accepts);
 
   if (!evmRequirement) {
     // Lightning (BOLT11) payment is a TODO — not implemented here.
@@ -356,9 +503,9 @@ export async function payAndFetch(
       ok: false,
       paymentRequired: true,
       message: [
-        "Payment required (HTTP 402) but no EVM (scheme: exact) option found.",
-        "Only EVM (USDC on Base) payments are currently supported; Lightning",
-        "(BOLT11) is not yet implemented in this client.",
+        "Payment required (HTTP 402) but no payable option found.",
+        "Only USDC on Base mainnet is signed for by default (other EVM chains need",
+        "X402_ALLOW_NETWORKS); Lightning (BOLT11) is not implemented in this client.",
         "",
         "Available payment options:",
         stringify(paymentData.accepts),
@@ -394,17 +541,21 @@ export async function payAndFetch(
     };
   }
 
-  // Step 5: retry with the X-PAYMENT header.
+  // Step 5: retry with the PAYMENT-SIGNATURE header (x402 v2).
   let retryResponse: Response;
   try {
     retryResponse = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-PAYMENT": xPaymentHeader,
+        "User-Agent": USER_AGENT,
+        "PAYMENT-SIGNATURE": xPaymentHeader,
       },
       body: JSON.stringify(body),
+      redirect: "manual",
+      signal: AbortSignal.timeout(PAID_TIMEOUT_MS),
     });
+    note(retryResponse);
   } catch (err) {
     return {
       ok: false,
@@ -413,6 +564,9 @@ export async function payAndFetch(
       }`,
     };
   }
+
+  const paidRedirect = redirectRefusal(retryResponse, url);
+  if (paidRedirect) return { ok: false, message: paidRedirect };
 
   const retryData = await safeJson(retryResponse);
   if (!retryResponse.ok) {

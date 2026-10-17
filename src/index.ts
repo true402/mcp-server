@@ -52,7 +52,11 @@ async function main() {
       `true402 MCP: discovered ${discovered.length} paid stalls from ${SERVER_URL} (${discovered.join(", ")})`
     );
   } else {
-    registerStallTools(server, SERVER_URL, WALLET_PRIVATE_KEY);
+    const builtin = registerStallTools(server, SERVER_URL, WALLET_PRIVATE_KEY);
+    console.error(
+      `true402 MCP: registered ${builtin.length} built-in stalls (${builtin.join(", ")}). ` +
+        `Live discovery will pick up the full catalog once ${SERVER_URL} is reachable.`
+    );
   }
 
   const transport = new StdioServerTransport();

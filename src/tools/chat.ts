@@ -5,7 +5,7 @@ import { payAndFetch } from "../x402-pay.js";
 /**
  * Register the chat tool.
  * Calls POST /v1/chat/completions on the true402 endpoint.
- * Handles the x402 payment flow (402 -> sign -> retry with X-Payment header)
+ * Handles the x402 payment flow (402 -> sign -> retry with the PAYMENT-SIGNATURE header)
  * via the shared {@link payAndFetch} helper.
  */
 export function registerChatTool(
@@ -44,9 +44,14 @@ export function registerChatTool(
         walletPrivateKey
       );
 
+      // A newer release exists: shown once per process, as its own block so it never mixes with data.
+      const notice = result.updateNotice
+        ? [{ type: "text" as const, text: result.updateNotice }]
+        : [];
+
       if (!result.ok) {
         return {
-          content: [{ type: "text" as const, text: result.message }],
+          content: [{ type: "text" as const, text: result.message }, ...notice],
           isError: true,
         };
       }
@@ -57,6 +62,7 @@ export function registerChatTool(
             type: "text" as const,
             text: JSON.stringify(result.data, null, 2),
           },
+          ...notice,
         ],
       };
     }
