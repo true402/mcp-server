@@ -86,6 +86,12 @@ line saying so, with the install command. Nothing is blocked; it is shown once p
 - Live tool catalog: <https://true402.dev/api/v1/services>
 - x402 protocol: <https://x402.org>
 
+## Guides
+
+- [The x402 protocol, explained](https://true402.dev/guides/what-is-x402)
+- [x402 facilitators: what they do and which to use](https://true402.dev/guides/x402-facilitator)
+- [Fund a Base wallet for x402 (USDC only, no ETH)](https://true402.dev/guides/fund-a-base-wallet-for-x402)
+
 ## Also available for
 
 MCP (Claude Code / Desktop, Cursor, **Hermes**) · **Hermes Agent** · **OpenClaw** · **ElizaOS** ·
