@@ -6,30 +6,23 @@ No accounts, no API keys. The agent's **wallet is its identity**: each paid tool
 
 ## Tools
 
-| Tool | Price | What it does |
-|------|-------|--------------|
-| `chat` | per-token + 3% | OpenAI-compatible LLM inference across many models |
-| `list_models` | free | List available models + pricing |
-| `token_safety` | $0.005 | ERC-20 rug/honeypot pre-check on Base → 0–100 score, risk band, flags, liquidity depth + a buy/sell honeypot simulation |
-| `seo_audit` | $0.02/page | SEO + GEO (generative-engine-optimization) audit of a page → structured report |
-| `web_extract` | $0.005 | Fetch a URL → clean text + markdown + links + metadata |
-| `link_preview` | $0.003 | Fetch a URL → Open Graph / unfurl card |
-| `robots_check` | $0.003 | A site's AI-crawler policy (GPTBot, ClaudeBot, Google-Extended, PerplexityBot, …) + sitemaps + llms.txt |
-| `headers_check` | $0.003 | HTTP security-headers analysis (HSTS, CSP, …) + a 0–100 score |
-| `new_pairs` | $0.003 | Newly created Base DEX pairs (Uniswap V3 / Aerodrome) — fresh token launches |
-| `liquidity_pulls` | $0.003 | Liquidity-removal / rug alerts on Base pools |
-| `whale_swaps` | $0.005 | Large swaps on Base by USD size — whale flow |
-| `token_report` | $0.008 | Fuller on-chain token report |
-| `liquidity_history` | $0.005 | What ALREADY happened to a Base token's liquidity — every removal with amount/block/tx, plus the other tokens drained in the same transaction. History a live simulation cannot re-derive |
-| `tx_preflight` | $0.008 | Check an **unsigned** Base transaction before signing: does it revert, does it grant an unlimited approval, and has the counterparty been seen draining liquidity. Takes no key and no signature, so it cannot broadcast or front-run |
+Tools are **auto-discovered** from the live catalog at startup, so a new marketplace stall appears
+without an update to this package. The catalog currently yields:
 
-Tools are **auto-discovered** from the live catalog, so new marketplace stalls appear automatically.
-Prices are illustrative; the live 402 challenge is authoritative.
+| Group | Tools | Price |
+|-------|-------|-------|
+| Token safety (Base) | `token_report` (composite avoid/caution/ok verdict — the pre-trade gate), `token_safety`, `honeypot`, `address_safety`, `address_risk`, `deployer_check` | $0.005–0.008 |
+| Base history & flow | `liquidity_history` (every observed liquidity removal + co-drained tokens), `liquidity_pulls`, `new_pairs`, `whale_swaps` | $0.003–0.005 |
+| Before you sign | `tx_preflight` — an **unsigned** Base transaction: does it revert, does it grant an unlimited approval, has the counterparty drained liquidity. Takes no key and no signature | $0.008 |
+| Full dossier | `token_dossier` — verdict + reasons over deployer and liquidity history, and what could not be established | $0.10 |
+| Other chains | token safety, token report and address safety on **Ethereum** and **BSC** (plus deployer check on Ethereum); token safety on **Solana** | $0.005–0.008 |
+| Web | `web_extract`, `link_preview`, `screenshot`, `robots_check` (AI-crawler policy + llms.txt), `headers_check` | $0.003–0.005 |
+| SEO & search | `seo_audit` (SEO + GEO audit, per page), `serp`, `backlinks`, `keyword_volume` (up to 200 keywords per call), `ranked_keywords`, `keyword_ideas` | $0.02–0.15 |
+| Markets & finance | `prediction_markets`, `defi_yields`, `quant` | $0.003–0.005 |
+| LLM | `chat` (OpenAI-compatible, per-token + 3%), `list_models` (free) | — |
 
-## Example: add token-safety to your agent
-
-A copy-paste reference in [`examples/token-safety/`](examples/token-safety/) — a framework-agnostic
-x402 client plus a drop-in LangChain tool that rug/honeypot-checks any Base token for $0.005/call.
+Prices are indicative; the live 402 challenge is authoritative, and the server refuses to sign above
+its per-call cap. Call `list_models` or read <https://true402.dev/api/openapi.json> for the exact set.
 
 ## Install
 
