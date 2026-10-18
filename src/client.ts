@@ -1,6 +1,6 @@
 // Who this client is, for the true402 update notice. `src/clients/registry.test.ts` in the true402
 // repo holds it equal to package.json.
-export const CLIENT = { id: 'mcp', version: '1.3.0', package: '@true402.dev/mcp-server', install: 'npm i -g @true402.dev/mcp-server@latest (or npx -y @true402.dev/mcp-server@latest)' } as const;
+export const CLIENT = { id: 'mcp', version: '1.3.1', package: '@true402.dev/mcp-server', install: 'npm i -g @true402.dev/mcp-server@latest (or npx -y @true402.dev/mcp-server@latest)' } as const;
 
 // Update notice. Every request says which client it is (`true402-mcp/<version>`); when a newer
 // release exists, true402 answers with `X-True402-Client-Latest` and `X-True402-Client-Update`
